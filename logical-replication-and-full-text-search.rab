@@ -1,0 +1,513 @@
+= Amazon RDS+EC2+PGroonga+ロジカルレプリケーション\nを使った低コスト\n高速全文検索
+
+: author
+   堀本泰弘
+: institution
+   クリアコード
+: content-source
+   第28回 中国地方DB勉強会 in 岡山
+: date
+   2020-01-25
+: start-time
+   2020-01-25T16:20:00+09:00
+: end-time
+   2020-01-25T17:10:00+09:00
+: theme
+   .
+
+= 自己紹介
+
+  # image
+  # src = Images/Self-introduction.png
+  # relative_height = 107
+
+= 自己紹介
+
+* 他のOSSへもコントリビュート
+  * PostgreSQLのドキュメントの改善を提案
+  * 問題は((*「開発元」*))で修正が弊社の\nポリシー
+
+= 今日のテーマ
+
+なるべく((*楽*))に\n((*高機能で高速な全文検索*))\nがしたい
+
+= 実現のための要素
+
+  # image
+  # src = Images/elements1.png
+  # relative_height = 108
+
+= 特に大事な要素
+
+  # image
+  # src = Images/elements2.png
+  # relative_height = 108
+
+= 楽
+
+  # image
+  # src = Images/Amazon_RDS.png
+  # relative_height = 108
+
+= 楽
+
+なぜ楽なのか？
+
+= 設定が楽
+
+  # image
+  # src = Images/Amazon_RDS_optimization.png
+  # relative_height = 120
+
+= 構築が楽
+
+  # image
+  # src = Images/Amazon_RDS_structure.png
+  # relative_height = 100
+
+= スケールアップが楽
+
+  # image
+  # src = Images/Amazon_RDS_scaling1.png
+  # relative_height = 105
+
+= スケールアップが楽
+
+  # image
+  # src = Images/Amazon_RDS_scaling2.png
+  # relative_height = 105
+
+= 障害対策が楽
+
+  # image
+  # src = Images/Amazon_RDS_replication.png
+  # relative_height = 105
+
+= 障害対策が楽
+
+  # image
+  # src = Images/Amazon_RDS_backup.png
+  # relative_height = 105
+
+= 障害対策が楽
+
+  # image
+  # src = Images/Amazon_RDS_hw_change.png
+  # relative_height = 105
+
+= 今日のテーマ
+
+なるべく((*楽*))に\n((*高機能で高速な全文検索*))\nがしたい
+
+= 全文検索
+
+  # image
+  # src = Images/element_pgroonga.png
+  # relative_height = 108
+
+= 全文検索
+
+なぜPGroongaなのか？
+
+= 対応言語
+
+全言語対応
+
+= 速い
+
+高速
+
+= 速い
+
+ベンチマーク
+
+= 速い
+
+* 日本語Wikipedia
+  * レコード数：約90万レコード
+  * 平均テキストサイズ：6.7KiB
+
+= 速い
+
+  # image
+  # src = Images/pgroonga_vs_pg_bigm.png
+  # relative_height = 108
+
+= 速い
+
+* ベンチマークの詳細な条件は\n以下を参照
+
+(('tag:x-small'))
+((<"https://pgroonga.github.io/ja/reference/pgroonga-versus-pg-bigm.html"|URL:https://pgroonga.github.io/ja/reference/pgroonga-versus-pg-bigm.html>))
+
+= SQLが使える
+
+  # image
+  # src = Images/pgroonga_sql.png
+  # relative_height = 108
+
+= 実例
+
+具体的に\nどう書くのか？
+
+= 実行例：テーブル定義
+
+  # coderay sql
+
+  CREATE TABLE entries (
+    title text,
+    content text
+  );
+
+= 実行例：\nインデックス定義
+
+  # coderay sql
+
+  -- 全文検索用インデックス
+  CREATE INDEX entries_full_text_search
+    ON entries
+    --「USING pgroonga」=「PGroongaを使う」
+    USING pgroonga (title, content);
+
+= 実行例：データ挿入
+
+  # coderay sql
+
+  -- 普通に挿入するだけでよい
+  INSERT INTO entries
+    VALUES ('PGroongaで高速全文検索！',
+            '高速に全文検索したいですね！');
+
+= 実行例：全文検索
+
+  # coderay sql
+
+  SELECT title FROM entries
+    WHERE
+  -- &@~で全文検索
+  -- 「検索」と「高速」をAND検索
+      title &@~ '検索 高速' OR
+      content &@~ '検索 高速';
+
+= 実行例：LIKE
+
+  # coderay sql
+
+  SELECT title FROM entries
+    WHERE
+  -- LIKEでもインデックスが効く
+  --＝アプリを書き換えずに高速化可能
+  -- ただし&@~より性能が落ちる
+      title LIKE '%検索%' OR
+      content LIKE '%検索%';
+
+= 機能
+
+* 全文検索に必要そうな機能は\n一通り揃っている
+  * 同義語検索
+  * 類似文書検索
+  * 読みがな検索
+  * 入力補完 etc..
+
+= 読みがな検索
+
+「やきにく」\nってどう書きますか？
+
+= 読みがな検索
+
+* やきにく
+* 焼き肉
+* 焼肉
+* やき肉
+* ヤキニク
+
+= 読みがな検索
+
+当然ですがどれも「やきにく」と読みます
+
+= 読みがな検索
+
+* 読みが同じなので、以下は全部同じものとして扱えます
+  * やきにく
+  * 焼き肉
+  * 焼肉
+  * やき肉
+  * ヤキニク
+
+= 読みがな検索
+
+例えば\n「やきにく」で検索すると
+
+= 読みがな検索
+
+* 「やきにく」((*Hit!*))
+* 「焼き肉」((*Hit!*))
+* 「焼肉」((*Hit!*))
+* 「やき肉」((*Hit!*))
+* 「ヤキニク」((*Hit!*))
+
+= 読みがな検索
+
+異体字
+
+= 読みがな検索
+
+「広」と「廣」
+
+= 読みがな検索
+
+例えば人名の\n検索
+
+= 読みがな検索
+
+検索キーワード「広瀬」で
+  * 「広瀬」((*Hit*))
+  * 「廣瀬」((*Hit*))
+となってほしい
+
+= 読みがな検索
+
+通常の検索\n
+検索キーワード「広瀬」で
+  * 「広瀬」のみ((*Hit*))
+
+= 読みがな検索
+
+読みがな検索なら\n
+検索キーワード「広瀬」で
+  * 「広瀬」((*Hit*))
+  * 「廣瀬」((*Hit*))
+
+= 読みがな検索
+
+両方ヒット！
+
+= 読みがな検索
+
+「広瀬」も\n「廣瀬」も\n読みが同じ
+
+= 他にも
+
+* それっぽい順でソート
+* キーワードハイライト
+* キーワードの周辺テキスト表示
+
+= 他にも
+
+* 電話番号検索
+  * 090-1234-5678 と 090 1234 5678、(090)1234-5678 等
+* fuzzy検索
+  * typo対策
+    * テクノロジーとテノクロジー
+
+= 他にも
+
+継続的に\nメンテナンス\nされている
+
+= 他にも
+
+PostgreSQL12に対応！
+
+= 高機能で高速
+
+PGroongaなら((*高機能で高速に全文検索*))できる
+
+= Amazon RDS + PGroonga
+
+しかし。。。
+
+= Amazon RDS + PGroonga
+
+  # image
+  # src = Images/can_not_install.png
+  # relative_height = 108
+
+= Amazon RDS + PGroonga
+
+他の２つの要素の出番！
+
+= Amazon RDS + PGroonga
+
+  # image
+  # src = Images/elements3.png
+  # relative_height = 108
+
+= 構成
+
+  # image
+  # src = Images/structure1.png
+  # relative_height = 108
+
+= ロジカル\nレプリケーションの特徴
+
+複製元と複製先の構造が同一でなくてもよい
+
+= ロジカル\nレプリケーションの特徴
+
+  # image
+  # src = Images/logical_replication1.png
+  # relative_height = 108
+
+= ロジカル\nレプリケーションの特徴
+
+  # image
+  # src = Images/logical_replication2.png
+  # relative_height = 108
+
+= 検索
+
+  # image
+  # src = Images/logical_replication_read_only.png
+  # relative_height = 105
+
+= 更新
+
+  # image
+  # src = Images/logical_replication_write_only.png
+  # relative_height = 105
+
+= 問題点
+
+Subscriberが\n1台しかない
+
+= 問題点
+
+* リクエストが増加しつづけた場合、この構成では耐えられない
+
+= 負荷分散
+
+  # image
+  # src = Images/logical_replication_load_barance.png
+  # relative_height = 105
+
+= 復旧
+
+検索できなくなったら
+
+= 復旧
+
+使い捨てる\n
+復旧は\nがんばらない
+
+= 復旧
+
+  # image
+  # src = Images/logical_replication_cannot_search.png
+  # relative_height = 105
+
+= 復旧
+
+  # image
+  # src = Images/logical_replication_EC2_destroy.png
+  # relative_height = 105
+
+= 復旧
+
+  # image
+  # src = Images/logical_replication_EC2_new.png
+  # relative_height = 105
+
+= サービス開始時間
+
+もう一つの問題
+
+= サービス開始時間
+
+データが増えると復旧が遅延
+
+= サービス開始時間
+
+  # image
+  # src = Images/logical_replication_slow.png
+  # relative_height = 105
+
+= 停止時間の見積もり
+
+許容できる停止時間は？
+
+= 停止時間の見積もり
+
+停止時間を\n見積もる
+
+= 停止時間の見積もり
+
+* 例えば...
+  * サービス復旧時間：1日
+    * 新しくAmazon EC2を作成して、サービス開始できるまでの時間
+  * 故障：1ヶ月に1回の頻度で故障
+
+= 停止時間の見積もり
+
+* リクエスト：
+  * 各EC2には均等にリクエストが振り分けられる
+* サービス継続：
+  * Amazon EC2が3台あれば、サービスを提供可能なくらいの負荷
+
+= 停止時間の見積もり
+
+* Amazon EC2を3台で運用する場合
+  * 1台でも故障するとサービス継続不可
+
+= 停止時間の見積もり
+
+  # image
+  # src = Images/logical_replication_load_up.png
+  # relative_height = 105
+
+= 停止時間の見積もり
+
+* この場合の稼働率
+
+  * 平均故障間隔 = \n365*24/12 = 730時間
+  * 平均復旧時間 = 24時間
+  * 稼働率 = 730/754 =  0.9681697612732095 ≒96.8%
+
+= 停止時間の見積もり
+
+つまり
+
+= 停止時間の見積もり
+
+* この構成では、1ヶ月に1日程度システムが停止する
+
+= 停止時間の見積もり
+
+* では、4台運用の場合ではどうなるのか？
+
+= 停止時間の見積もり
+
+* 1台あたりの稼働率：96.8%
+* 1台あたりの故障率：\n    100% - 96.8% = 3.2%
+* 2台同時に故障する確率：\n    0.032*0.032≒0.001=0.1%
+
+= 停止時間の見積もり
+
+* したがって、1ヶ月に約45分程度システムが停止する
+
+= まとめ
+
+  # image
+  # src = Images/logical_replication_load_barance.png
+  # relative_height = 105
+
+= まとめ
+
+なるべく((*楽*))に\n((*高機能で高速な全文検索*))が\nできました！
+
+= 最後に
+
+* PGroongaについての疑問等は、GitHub、Gitterにて
+* ドキュメントも充実
+  * ((<"https://pgroonga.github.io/ja/"|URL:https://pgroonga.github.io/ja/>))
+
+= 最後に
+
+より突っ込んだお話がしたい場合は↓↓\n
+問い合わせ先：
+
+(('tag:x-small'))
+((<"https://www.clear-code.com/contact/?type=groonga"|URL:https://www.clear-code.com/contact/?type=groonga>))
+
+= 最後に
+
+ご静聴ありがとうございました
