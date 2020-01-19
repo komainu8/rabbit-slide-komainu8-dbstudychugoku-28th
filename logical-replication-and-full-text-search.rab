@@ -490,7 +490,9 @@ Subscriberが\n1台しかない
 
 = 同期レプリケーション
 
-a
+  # image
+  # src = Images/replication_sync.png
+  # relative_height = 105
 
 = 同期レプリケーション
 
@@ -499,7 +501,9 @@ a
 
 = 非同期レプリケーション
 
-aa
+  # image
+  # src = Images/replication_async.png
+  # relative_height = 105
 
 = 非同期レプリケーション
 
